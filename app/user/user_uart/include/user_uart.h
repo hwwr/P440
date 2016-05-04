@@ -47,8 +47,11 @@ typedef struct
 }CusUartIntrPtr;
 
 void debug_print_hex_data(char*buf, int len);
-void ICACHE_FLASH_ATTR cus_wifi_handler_alinkdata2mcu(u8 dat_index, int dat_value);
+#ifdef PASS_THROUGH
 void ICACHE_FLASH_ATTR cus_wifi_data_handler(u8 cmd,int value);
+#else
+void ICACHE_FLASH_ATTR cus_wifi_handler_alinkdata2mcu(u8 dat_index, int dat_value);
+#endif
 void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters);
 void ICACHE_FLASH_ATTR user_uart_dev_start(void);
 void ICACHE_FLASH_ATTR user_key_short_press(void);

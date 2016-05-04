@@ -27,7 +27,6 @@
 #include <string.h>
 #include "esp_common.h"
 #include "user_uart.h"
-
 //#include "user_light.h"
 
 
@@ -51,7 +50,6 @@ void debug_print_hex_data(char*buf, int len)
 
 int uart0_write_data(u8 *data, int len)
 {
-	int re_len = 0;
 	int i = 0;
 	for (i = 0; i <len; i++)
 	{
@@ -61,16 +59,17 @@ int uart0_write_data(u8 *data, int len)
 
 }
 
+#ifdef PASS_THROUGH
 
 void ICACHE_FLASH_ATTR cus_wifi_data_handler(u8 cmd, int value)
 {
 
-	ESP_DBG(("data2mcu handler:%d",cmd));
+	ESP_DBG(("cmd:%d,value:%d", cmd, value));
 
 	uint8_t i;
 	frame_t frame;
 
-	for (i = 0; i < FRAME_DOWN_DATA_LEN-5; i++)
+	for (i = 0; i < FRAME_DOWN_DATA_LEN-FRAME_EXTENAL_LEN; i++)
 		frame.data[i] = 0;
 
 	frame.crc = 0;
@@ -125,16 +124,88 @@ void ICACHE_FLASH_ATTR cus_wifi_data_handler(u8 cmd, int value)
 
 	uart0_write_data((uint8_t *)&frame, frame.len);
 
+	return;
+}
+
+#else
+
+
+void ICACHE_FLASH_ATTR cus_wifi_handler_alinkdata2mcu(u8 dat_index, int dat_value)
+{
+	ESP_DBG(("index[%x],data_value[%x]", dat_index, dat_value));
+	// here handler user own uart protocol...
+	uint8_t i;
+	frame_t frame;
+
+	for (i = 0; i < FRAME_DOWN_DATA_LEN - FRAME_EXTENAL_LEN; i++)
+		frame.data[i] = 0;
+
+	frame.crc = 0;
+	frame.head = FRAME_HEADER;
+	frame.crc += frame.head;
+	frame.len = FRAME_DOWN_DATA_LEN;
+	frame.crc += frame.len;
+	frame.type = FRAME_CUS_DOWN_TYPE;
+	frame.crc += frame.type;
+	frame.id = _ID++;
+	frame.crc += frame.id;
+
+	switch (dat_index) {
+
+	case CMD_MCU_STATUS_QUERY:
+
+		frame.data[0] = CUS_CMD_POST;
+
+		break;
+
+	case CMD_POWER_ONOFF_BIT:
+		frame.data[0] = CUS_CMD_POWER_ONOFF;
+		frame.data[CUS_CMD_POWER_ONOFF_BIT] = dat_value;
+		break;
+	case CMD_WORKMODE_BIT:
+		frame.data[0] = CUS_CMD_WORKMODE;
+		frame.data[CUS_CMD_WORKMODE_BIT] = dat_value;
+		break;
+	case CMD_IONS_ONOFF_BIT:
+		frame.data[0] = CUS_CMD_IONS_ONOFF;
+		frame.data[CUS_CMD_IONS_ONOFF_BIT] = dat_value;
+		break;
+	case CMD_SPEED_SET_BIT:
+		frame.data[0] = CUS_CMD_SPEED_SET;
+		frame.data[CUS_CMD_SPEED_SET_BIT] = dat_value;
+		break;
+	case CMD_AIR_ONOFF_BIT:
+		frame.data[0] = CUS_CMD_AIR_ONOFF;
+		frame.data[CUS_CMD_AIR_ONOFF_BIT] = dat_value;
+		break;
+	case CMD_TIMER_ON_BIT:
+		frame.data[0] = CUS_CMD_TIMER;
+		frame.data[CUS_CMD_TIMER_BIT] = dat_value;
+		break;
+	default:
+		ESP_DBG(("CMD UNSUPPORT"));
+		return;
+
+	}
+	frame.crc += frame.data[0];
+	frame.crc += dat_value;
+
+	uart0_write_data((uint8_t *)&frame, frame.len);
+
 
 	return;
 }
+
+
+#endif
+
 
 /*
 	模块状态查询应答
  */
 void ICACHE_FLASH_ATTR cus_uart_data_echo()
 {
-	ESP_DBG(("cus_uart_data_echo"));
+	ESP_DBG((" "));
 
 	uint8_t i;
 	frame_t frame;
@@ -204,6 +275,8 @@ void ICACHE_FLASH_ATTR cus_uart_error_echo(u8 error)
 	frame.data[1] = 0;//保留
 
 	uart0_write_data((uint8_t *)&frame, frame.len);
+
+	return;
 }
 
 
@@ -235,7 +308,7 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 	}
 	*/
 	uint8_t frame_type = dat_in[FRAME_HEAD_LEN + FRAME_LEN_LEN];
-	char *cus_data = dat_in + FRAME_ID_OFFSET + 1;//指向数据区-命令
+	char *cus_data = dat_in + FRAME_ID_OFFSET + FRAME_ID_LEN;//指向数据区-命令
 	
 	if (FRAME_CUS_POST_TYPE == frame_type || FRAME_CUS_DOWN_TYPE == frame_type) {
 
@@ -243,38 +316,39 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 		{
 			if (virtual_device.OnOff_Power != cus_data[CUS_CMD_POWER_ONOFF_BIT]) {
 				virtual_device.OnOff_Power = cus_data[CUS_CMD_POWER_ONOFF_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.WorkMode != cus_data[CUS_CMD_WORKMODE_BIT]) {
 				virtual_device.WorkMode = cus_data[CUS_CMD_WORKMODE_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.OnOff_Ions != cus_data[CUS_CMD_IONS_ONOFF_BIT]) {
 				virtual_device.OnOff_Ions = cus_data[CUS_CMD_IONS_ONOFF_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.Ventilation_Speed != cus_data[CUS_CMD_SPEED_SET_BIT]) {
 				virtual_device.Ventilation_Speed = cus_data[CUS_CMD_SPEED_SET_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.OnOff_AirQuality != cus_data[CUS_CMD_AIR_ONOFF_BIT]) {
 				virtual_device.OnOff_AirQuality = cus_data[CUS_CMD_AIR_ONOFF_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.TimeMeter_PowerOn != cus_data[CUS_CMD_TIMER_BIT]) {
 				virtual_device.TimeMeter_PowerOn = cus_data[CUS_CMD_TIMER_BIT];//////////
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
 			if (virtual_device.Status_AirQuality != cus_data[CUS_CMD_AIRQUALITY_BIT]) {
 				virtual_device.Status_AirQuality = cus_data[CUS_CMD_AIRQUALITY_BIT];
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
-			//采用百分比表示
 			if (virtual_device.LifeTime_Filter != ((cus_data[CUS_CMD_FILTER_LIFE_BIT] << 8) + cus_data[CUS_CMD_FILTER_LIFE_BIT + 1])) {
 				virtual_device.LifeTime_Filter = ((cus_data[CUS_CMD_FILTER_LIFE_BIT] << 8) + cus_data[CUS_CMD_FILTER_LIFE_BIT + 1]);
-				device_status_change = 1;
+				device_status_change = 1;//更新设备状态，并上报设备状态至云
 			}
+
 			//other params
+			
 		}
 		else {
 			if (FRAME_CUS_DOWN_TYPE == frame_type) {
@@ -365,14 +439,6 @@ void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters)
 }
 
 
-void ICACHE_FLASH_ATTR cus_wifi_handler_alinkdata2mcu(u8 dat_index, int dat_value)
-{
-	ESP_DBG(("data2mcu handler, index[%x],data_value[%x]", dat_index, dat_value));
-	// here handler user own uart protocol...
-
-
-	return;
-}
 
 void ICACHE_FLASH_ATTR user_uart_dev_start(void)
 {

@@ -37,11 +37,15 @@ extern  int need_factory_reset ;
 
 #define CUS_GLOBAL_VER "AlinkV1.0.02-20160420"
 
-#define DEV_ATTRI_NUM			(10)
-
 #define ESP_DBG(a) os_printf("[dbg@%s,%d]",__FUNCTION__,__LINE__);os_printf a;os_printf("\r\n")   // for dbg print
 
 
+//#define PASS_THROUGH 
+
+
+#ifdef PASS_THROUGH
+
+#define DEV_ATTRI_NUM			(10)
 //LUA 数据相关定义
 #define LUA_DATA_HEADER			0xAA
 #define LUA_DATA_END			0x55
@@ -63,13 +67,33 @@ extern  int need_factory_reset ;
 #define LUA_CMD_ERROR_BIT				0x0A
 #define LUA_CMD_AIR_ONOFF_BIT			0x0B
 
+#else
+
+#define DEV_ATTRI_NUM			(9)
+
+#define CMD_POWER_ONOFF_BIT			0x00
+#define CMD_IONS_ONOFF_BIT			0x01
+#define CMD_AIRQUALITY_BIT			0x02
+#define CMD_WORKMODE_BIT			0x03
+#define CMD_SPEED_SET_BIT			0x04
+#define CMD_TIMER_ON_BIT			0x05
+#define CMD_FILTER_LIFE_BIT			0x06
+#define CMD_ERROR_BIT				0x07
+#define CMD_AIR_ONOFF_BIT			0x08
+
+#define CMD_MCU_STATUS_QUERY		0xff//
+
+#endif
+
 //48协议相关定义
 #define FRAME_HEAD_LEN	1	
 #define FRAME_HEADER	0x48
 #define FRAME_LEN_LEN	1	
 #define	FRAME_TYPE_LEN	1
 #define	FRAME_CHECK_LEN	1
+#define	FRAME_ID_LEN	1
 #define FRAME_ID_OFFSET (FRAME_HEAD_LEN + FRAME_LEN_LEN + FRAME_TYPE_LEN)
+#define FRAME_EXTENAL_LEN (FRAME_ID_OFFSET + FRAME_ID_LEN + FRAME_CHECK_LEN)
 
 #define FRAME_CUS_POST_TYPE		0x01//主动上报消息类型
 #define FRAME_CUS_DOWN_TYPE		0x02//下发消息类型
@@ -107,6 +131,8 @@ extern  int need_factory_reset ;
 #define FRAME_ERROR_UNCMD				0x04
 
 
+#define CUS_CMD_KEEP_SAME				0x00
+
 
 typedef struct p440_dev {   // real device update this Structure parameters
 	u8 OnOff_Power;//电源开关
@@ -116,7 +142,7 @@ typedef struct p440_dev {   // real device update this Structure parameters
 	u8 Ventilation_Speed;//风速
 	u8 TimeMeter_PowerOn;//倒数计时开机
 	u8 TimeMeter_PowerOff;//倒数计时关机
-	u8 LifeTime_Filter;//
+	u16 LifeTime_Filter;//
 	u8 ErrorCode;//
 	u8 OnOff_AirQuality;//
 

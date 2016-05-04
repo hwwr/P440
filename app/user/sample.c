@@ -36,7 +36,7 @@
 
 #define wsf_deb  os_printf
 #define wsf_err os_printf
-#define PASS_THROUGH 
+
 //#define SUB_DEV_ENABLE // 子设备功能sample 未实现
 /* 设备信息：根据网页注册信息导出的电子表格更新对应信息 */
 /* device info */
@@ -48,9 +48,9 @@
 #define ALINK_KEY "EGuPnDiE9Kuk5yPWBStv"
 #define ALINK_SECRET "gw9KbFDj4TpZmlgGac8oc5UJljCEX4vxWrD2t1Vc"
 #else
-#define DEV_MODEL "HEKR_LIVING_AIRPURIFIER_P440_TEST"
-#define ALINK_KEY "EkIOEjZ5BL4STlvNscbk"
-#define ALINK_SECRET "5UqkiNBIdEpZ1Q2t6bjPMlneXxCxHxsdar71r2ac"
+#define DEV_MODEL "HEKR_LIVING_AIRPURIFIER_P440_B"
+#define ALINK_KEY "kJ2o1stQ3SxmmaPQsOjR"
+#define ALINK_SECRET "TQyyucf9XQ8LrAdZizy7YVbnS2wZZtyhC0oQHIYf"
 #endif
 #define DEV_MANUFACTURE "HEKR"
 /*sandbox key/secret*/
@@ -85,7 +85,10 @@ int ICACHE_FLASH_ATTR print_mem_callback(void *a, void *b)
 
 #ifdef PASS_THROUGH
 /* device response server command,用户需要自己实现这个函数,处理服务器下发的指令*/
-/* this sample save cmd value to virtual_device*/
+/* 
+	生成串口透传48协议
+	下发至客户MCU
+*/
 static int ICACHE_FLASH_ATTR execute_cmd(const char *rawdata, int len)
 {
 	int ret = 0, i = 0;
@@ -100,51 +103,48 @@ static int ICACHE_FLASH_ATTR execute_cmd(const char *rawdata, int len)
 	wsf_deb("\n");
 
 	for (i = 0; i < len; i++) {
-		switch (i) {
-		case LUA_CMD_POWER_ONOFF_BIT:
-			if (virtual_device.OnOff_Power != rawdata[i] && rawdata[i] != 0x00) {
 		
-				cus_wifi_data_handler(CUS_CMD_POWER_ONOFF, rawdata[i]);
-			}
-			break;
-		case LUA_CMD_IONS_ONOFF_BIT:
-			if (virtual_device.OnOff_Ions != rawdata[i] && rawdata[i] != 0x00) {
-				
-				cus_wifi_data_handler(CUS_CMD_IONS_ONOFF, rawdata[i]);
-			}
-			break;
-		case LUA_CMD_WORKMODE_BIT:
-			if (virtual_device.WorkMode != rawdata[i] && rawdata[i] != 0x00) {
-				
-				cus_wifi_data_handler(CUS_CMD_WORKMODE, rawdata[i]);
+		if (rawdata[i] != CUS_CMD_KEEP_SAME) {
 
+			switch (i) {
+			case LUA_CMD_POWER_ONOFF_BIT:
+				if (virtual_device.OnOff_Power != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_POWER_ONOFF, rawdata[i]);
+				}
+				break;
+			case LUA_CMD_IONS_ONOFF_BIT:
+				if (virtual_device.OnOff_Ions != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_IONS_ONOFF, rawdata[i]);
+				}
+				break;
+			case LUA_CMD_WORKMODE_BIT:
+				if (virtual_device.WorkMode != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_WORKMODE, rawdata[i]);
+				}
+				break;
+			case LUA_CMD_SPEED_SET_BIT:
+				if (virtual_device.Ventilation_Speed != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_SPEED_SET, rawdata[i]);
+				}
+				break;
+			case LUA_CMD_TIMER_ON_BIT:
+				if (virtual_device.TimeMeter_PowerOn != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_TIMER, rawdata[i]);
+				}
+				break;
+			case LUA_CMD_TIMER_OFF_BIT:
+				if (virtual_device.TimeMeter_PowerOff != rawdata[i]) {
+					//virtual_device.TimeMeter_PowerOff = rawdata[i];
+				}
+				break;
+			case LUA_CMD_AIR_ONOFF_BIT:
+				if (virtual_device.OnOff_AirQuality != rawdata[i]) {
+					cus_wifi_data_handler(CUS_CMD_AIR_ONOFF, rawdata[i]);
+				}
+				break;
+			default:
+				break;
 			}
-			break;
-		case LUA_CMD_SPEED_SET_BIT:
-			if (virtual_device.Ventilation_Speed != rawdata[i] && rawdata[i] != 0x00) {
-				
-				cus_wifi_data_handler(CUS_CMD_SPEED_SET, rawdata[i]);
-			}
-			break;
-		case LUA_CMD_TIMER_ON_BIT:
-			if (virtual_device.TimeMeter_PowerOn != rawdata[i] && rawdata[i] != 0x00) {
-				
-				cus_wifi_data_handler(CUS_CMD_TIMER, rawdata[i]);
-			}
-			break;
-		case LUA_CMD_TIMER_OFF_BIT:
-			if (virtual_device.TimeMeter_PowerOff != rawdata[i] && rawdata[i] != 0x00) {
-				//virtual_device.TimeMeter_PowerOff = rawdata[i];
-			}
-			break;
-		case LUA_CMD_AIR_ONOFF_BIT:
-			if (virtual_device.OnOff_AirQuality != rawdata[i] && rawdata[i] != 0x00) {
-				
-				cus_wifi_data_handler(CUS_CMD_AIR_ONOFF, rawdata[i]);
-			}
-			break;
-		default:
-			break;
 		}
 	}
 	
@@ -214,6 +214,7 @@ int ICACHE_FLASH_ATTR alink_device_post_raw_data(void)
 		}
 		
 	}
+
 	/* do your job end */
 	return ret;
 }
@@ -253,15 +254,11 @@ int ICACHE_FLASH_ATTR rawdata_set_callback(char *rawdata, int len)
 #else
 
 char *device_attr[DEV_ATTRI_NUM] = { "OnOff_Power", "OnOff_Ions","Status_AirQuality",
-"WorkMode","Ventilation_Speed","TimeMeter_PowerOn", "TimeMeter_PowerOff",
-"LifeTime_Filter","ErrorCode", "OnOff_AirQuality" };   // this is a demo json package data, real device need to update this package
-													   /*
-													   const char *main_dev_params =
-													   "{\"OnOff_Power\": { \"value\": \"%d\" }, \"OnOff_Ions\": { \"value\": \"%d\" }, \"OnOff_Ozone\": { \"value\": \"%d\" },\"OnOff_Disinfection_UltraViolet\": { \"value\": \"%d\"}, \"Status_FilterMesh\": { \"value\": \"%d\"}, \"Status_AirQuality\": { \"value\": \"%d\" }, \"AirQuality_PM25\": { \"value\": \"%d\" }, \"WorkMode\": { \"value\": \"%d\" },\"Ventilation_Speed\": { \"value\": \"%d\" }, \"Ventilation_Direction_UpDown\": { \"value\": \"%d\" }, \"Temperature_Now\": { \"value\": \"%d\" },\"Humidity_Now\": { \"value\": \"%d\" }, \"Humidity_Target\": { \"value\": \"%d\" }, \"Time_Now\": { \"value\": \"%d\" }, \"AlarmClock_PowerOn\": { \"value\": \"%d\" }, \"AlarmClock_PowerOff\": { \"value\": \"%d\" }, \"TimeMeter_PowerOn\": { \"value\": \"%d\" }, \"TimeMeter_PowerOff\": { \"value\": \"%d\" }, \"Duration_Runtime\": { \"value\": \"%d\" }, \"LifeTime_Filter\": { \"value\": \"%d\" }, \"Status_TVOC\": { \"value\": \"%d\" }, \"ErrorCode\": { \"value\": \"%d\" }}";
-													   */
+"WorkMode","Ventilation_Speed","TimeMeter_PowerOn","LifeTime_Filter","ErrorCode", "OnOff_AirQuality"};
 
 const char *main_dev_params =
-"{\"OnOff_Power\": { \"value\": \"%d\" }, \"OnOff_Ions\": { \"value\": \"%d\" }, \"Status_AirQuality\": { \"value\": \"%d\" },\"WorkMode\": { \"value\": \"%d\"}, \"Ventilation_Speed\": { \"value\": \"%d\"},\"TimeMeter_PowerOn\": { \"value\": \"%d\"}, \"TimeMeter_PowerOff\": { \"value\": \"%d\"},\"LifeTime_Filter\": { \"value\": \"%d\"}, \"ErrorCode\": { \"value\": \"%d\"}, \"OnOff_AirQuality\": { \"value\": \"%d\"}}";
+"{\"OnOff_Power\": { \"value\": \"%d\" }, \"OnOff_Ions\": { \"value\": \"%d\" },\
+ \"Status_AirQuality\": { \"value\": \"%d\" },\"WorkMode\": { \"value\": \"%d\"},\"Ventilation_Speed\": { \"value\": \"%d\"},\"TimeMeter_PowerOn\": { \"value\": \"%d\"},\"LifeTime_Filter\": { \"value\": \"%d\"}, \"ErrorCode\": { \"value\": \"%d\"}, \"OnOff_AirQuality\": { \"value\": \"%d\"}}";
 
 
 /*设备上报数据,需要客户根据具体业务去实现*/
@@ -270,9 +267,8 @@ static int ICACHE_FLASH_ATTR alink_device_post_data(alink_down_cmd_ptr down_cmd)
 {
 	alink_up_cmd up_cmd;
 	int ret = ALINK_ERR;
-	//char buffer[1024];
 	char *buffer = NULL;
-	//      static int count=0;
+
 	if (device_status_change) {
 
 		wsf_deb("##[%s][%s|%d]Malloc %u. Available memory:%d.\n", __FILE__, __FUNCTION__, __LINE__,
@@ -289,10 +285,9 @@ static int ICACHE_FLASH_ATTR alink_device_post_data(alink_down_cmd_ptr down_cmd)
 		sprintf(buffer, main_dev_params, virtual_device.OnOff_Power,
 			virtual_device.OnOff_Ions, virtual_device.Status_AirQuality, virtual_device.WorkMode,
 			virtual_device.Ventilation_Speed, virtual_device.TimeMeter_PowerOn,
-			virtual_device.TimeMeter_PowerOff, virtual_device.LifeTime_Filter,
-			virtual_device.ErrorCode, virtual_device.OnOff_AirQuality);
+			virtual_device.LifeTime_Filter,virtual_device.ErrorCode, virtual_device.OnOff_AirQuality);
 
-		printf(buffer);//////////////
+		printf("%s\n", buffer);
 
 		up_cmd.param = buffer;
 		if (down_cmd != NULL) {
@@ -334,7 +329,7 @@ int ICACHE_FLASH_ATTR main_dev_set_device_status_callback(alink_down_cmd_ptr dow
 	json_value *jptr;
 	json_value *jstr;
 	json_value *jstr_value;
-	int value = 0, i = 0;
+	int value = 0, i;
 	char *value_str = NULL;
 
 	wsf_deb("%s %d \n", __FUNCTION__, __LINE__);
@@ -352,80 +347,14 @@ int ICACHE_FLASH_ATTR main_dev_set_device_status_callback(alink_down_cmd_ptr dow
 			value = atoi(value_str);
 			cus_wifi_handler_alinkdata2mcu(i, value);
 
-			ESP_DBG(("OnOff_Power:0x%X,OnOff_Ions:0x%X,WorkMode:0x%X,Ventilation_Speed:0x%X,LifeTime_Filter:0x%X", virtual_device.OnOff_Power, \
+			//ESP_DBG(("OnOff_Power:0x%X,OnOff_Ions:0x%X,WorkMode:0x%X,Ventilation_Speed:0x%X,LifeTime_Filter:0x%X", virtual_device.OnOff_Power, \
 				virtual_device.OnOff_Ions, virtual_device.WorkMode, virtual_device.Ventilation_Speed, virtual_device.LifeTime_Filter));
 		}
 	}
 
-
-	for (i = 0; i < DEV_ATTRI_NUM; i++)
-	{
-		jstr = json_object_object_get_e(jptr, device_attr[i]);
-		jstr_value = json_object_object_get_e(jstr, "value");
-		value_str = json_object_to_json_string_e(jstr_value);
-		if (value_str) {
-			value = atoi(value_str);
-			switch (i) {
-			case 0:
-				if (virtual_device.OnOff_Power != value) {
-					virtual_device.OnOff_Power = value;
-				}
-				break;
-			case 1:
-				if (virtual_device.OnOff_Ions != value) {
-					virtual_device.OnOff_Ions = value;
-				}
-				break;
-			case 2:
-				if (virtual_device.Status_AirQuality != value) {
-					virtual_device.Status_AirQuality = value;
-				}
-				break;
-			case 3:
-				if (virtual_device.WorkMode != value) {
-					virtual_device.WorkMode = value;
-				}
-				break;
-			case 4:
-				if (virtual_device.Ventilation_Speed != value) {
-					virtual_device.Ventilation_Speed = value;
-				}
-				break;
-			case 5:
-				if (virtual_device.TimeMeter_PowerOn != value) {
-					virtual_device.TimeMeter_PowerOn = value;
-				}
-				break;
-			case 6:
-				if (virtual_device.TimeMeter_PowerOff != value) {
-					virtual_device.TimeMeter_PowerOff = value;
-				}
-				break;
-			case 7:
-				if (virtual_device.LifeTime_Filter != value) {
-					virtual_device.LifeTime_Filter = value;
-				}
-				break;
-			case 8:
-				if (virtual_device.ErrorCode != value) {
-					virtual_device.ErrorCode = value;
-				}
-				break;
-			case 9:
-				if (virtual_device.OnOff_AirQuality != value) {
-					virtual_device.OnOff_AirQuality = value;
-				}
-				break;
-			default:
-				break;
-			}
-		}
-	}
-
 	json_value_free(jptr);
-	device_status_change = 1;   // event send current real device status to the alink server
 
-	return 0;		// alink_device_post_data(down_cmd);
+	return 0;
 					/* do your job end! */
 }
 
@@ -434,7 +363,8 @@ int ICACHE_FLASH_ATTR main_dev_get_device_status_callback(alink_down_cmd_ptr dow
 {
 	wsf_deb("%s %d \n", __FUNCTION__, __LINE__);
 	wsf_deb("%s %d\n%s\n", down_cmd->uuid, down_cmd->method, down_cmd->param);
-	device_status_change = 1;
+
+	cus_wifi_handler_alinkdata2mcu(CMD_MCU_STATUS_QUERY, 0);//主动查询客户MCU状态
 
 	return 0;		//alink_device_post_data(down_cmd);
 }

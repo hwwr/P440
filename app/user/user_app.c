@@ -215,9 +215,13 @@ int ICACHE_FLASH_ATTR setSmartConfigFlag(int value)
 #endif
 
 
-static char vendor_ssid[32];
-static char vendor_passwd[64];
-static char *vendor_tpsk = "PLnBaCPHF7icf65a5nJmcL2GZC+w3vwCnH36k8O91og=";
+//static char vendor_ssid[32];
+//static char vendor_passwd[64];
+#ifdef PASS_THROUGH
+static char *vendor_tpsk = "L1qp3yvGSx5bVIcDIb0Pu7bF6G2tEnSLuzDJuv9Ym84";
+#else
+static char *vendor_tpsk = "Hz2rMie/nh5I9FBDKMOGIhGU6oexoVXaTpLy42bsqg4=";
+#endif
 int ICACHE_FLASH_ATTR vendor_callback(char *ssid, char *passwd, char *bssid, unsigned int security, char channel)
 {
 	if (!ssid) {
@@ -409,7 +413,7 @@ void ICACHE_FLASH_ATTR user_app(void)
 		need_notify_app = 1;
 	}
 
-	setLed1State(1);
+	setLed1State(1);//WIFI led÷∏ æµ∆¡¡
 
 	xTaskCreate(startmain_task, "start_task", (256 * 4), NULL, 2, NULL);
 
