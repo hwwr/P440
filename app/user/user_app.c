@@ -56,7 +56,7 @@ void ICACHE_FLASH_ATTR setLed1State(int flag)
 		GPIO_OUTPUT_SET(GPIO_ID_PIN(14), 1);	// led on
 	}
 }
-
+/*
 void ICACHE_FLASH_ATTR setLed2State(int flag)
 {
 	if (0 == flag) {
@@ -66,7 +66,7 @@ void ICACHE_FLASH_ATTR setLed2State(int flag)
 		GPIO_OUTPUT_SET(GPIO_ID_PIN(15), 1);	// led on
 	}
 }
-
+*/
 void ICACHE_FLASH_ATTR led_gpio_init(void)
 {
 	GPIO_ConfigTypeDef pGPIOConfig;
@@ -76,25 +76,26 @@ void ICACHE_FLASH_ATTR led_gpio_init(void)
 	pGPIOConfig.GPIO_Pin = GPIO_Pin_14;	//led1
 	gpio_config(&pGPIOConfig);
 	GPIO_OUTPUT_SET(GPIO_ID_PIN(14), 0);	//close led1
+	setLed1State(0);
+	/*
 	pGPIOConfig.GPIO_Pin = GPIO_Pin_15;	//led2
 	gpio_config(&pGPIOConfig);
 	GPIO_OUTPUT_SET(GPIO_ID_PIN(15), 0);	//close led2
-	setLed1State(0);
 	setLed2State(0);
+	*/
+
 }
 
 int need_factory_reset = 0;
-static int sw1_long_key_flag = 0;
-static int sw2_long_key_flag = 0;
+//static int sw1_long_key_flag = 0;
+//static int sw2_long_key_flag = 0;
 void ICACHE_FLASH_ATTR user_key_long_press(void)
 {
 	os_printf("[%s][%d] user key long press \n\r", __FUNCTION__, __LINE__);
 	//	sw1_long_key_flag = 1;
 	setLed1State(1);
 
-	//	need_factory_reset = 1;
-
-	setSmartConfigFlag(0x1);   // short press enter smartconfig
+	setSmartConfigFlag(0x1);   // long press enter smartconfig
 	vTaskDelay(100);
 	system_restart();  // restart then enter to smartconfig mode
 
@@ -144,12 +145,14 @@ extern FwFileInfo_t fwFileInfo;
 extern void dumpFwInfo();
 extern void alink_ota_main_thread(FwFileInfo_t * pFwFileInfo);
 extern void alink_ota_init();
+
 #define pthread_mutex_init(a, b)sys_mutex_new(a)
 
 void ota_test()
 {
 
 }
+/*
 void ICACHE_FLASH_ATTR sw2_key_long_press()
 {
 	os_printf("sw2_key_long_press\n");
@@ -161,20 +164,22 @@ void ICACHE_FLASH_ATTR sw2_key_long_press()
 void ICACHE_FLASH_ATTR sw2_key_short_press()
 {
 	if (sw2_long_key_flag) {
-		sw2_long_key_flag = 0;
-		return;
+	sw2_long_key_flag = 0;
+	return;
 	}
 	os_printf("sw2_key short \n");
 	//ota_test();
 }
 
+*/
+
+
 void ICACHE_FLASH_ATTR reset_keyinit(void)
 {
-	single_key[0] =
-		key_init_single(13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13, user_key_long_press, user_key_short_press);
-	single_key[1] =
-		key_init_single(4, PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4, sw2_key_long_press, sw2_key_short_press);
-	keys.key_num = 2;
+	single_key[0] = key_init_single(13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13, user_key_long_press, user_key_short_press);
+	//single_key[1] = key_init_single(4, PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4, sw2_key_long_press, sw2_key_short_press);
+	//keys.key_num = 2;
+	keys.key_num = 1;
 	keys.single_key = single_key;
 	key_init(&keys);
 }
@@ -212,8 +217,9 @@ int ICACHE_FLASH_ATTR setSmartConfigFlag(int value)
 }
 
 
-#endif
+#endif//ENABLE_GPIO_KEY
 
+bool wifi_get_ssid_passwd = ALINK_FALSE;
 
 //static char vendor_ssid[32];
 //static char vendor_passwd[64];
@@ -222,6 +228,7 @@ static char *vendor_tpsk = "L1qp3yvGSx5bVIcDIb0Pu7bF6G2tEnSLuzDJuv9Ym84";
 #else
 static char *vendor_tpsk = "Hz2rMie/nh5I9FBDKMOGIhGU6oexoVXaTpLy42bsqg4=";
 #endif
+
 int ICACHE_FLASH_ATTR vendor_callback(char *ssid, char *passwd, char *bssid, unsigned int security, char channel)
 {
 	if (!ssid) {
@@ -235,6 +242,9 @@ int ICACHE_FLASH_ATTR vendor_callback(char *ssid, char *passwd, char *bssid, uns
 		strncpy(config->password, passwd, 64);
 		wifi_station_set_config(config);
 		free(config);
+
+		wifi_get_ssid_passwd = ALINK_TRUE;
+
 		wifi_station_connect();
 
 	}
@@ -265,6 +275,7 @@ void ICACHE_FLASH_ATTR startmain_task(void *pvParameters)
 }
 
 int need_notify_app = 0;
+
 #if 1
 
 void ICACHE_FLASH_ATTR config_flushing(void *pvParameters)
@@ -278,11 +289,14 @@ void ICACHE_FLASH_ATTR config_flushing(void *pvParameters)
 
 		int ret = wifi_station_get_connect_status();
 		if (ret == STATION_GOT_IP) {
-			setLed1State(1);
+			setLed1State(1);//成功接入AP后，LED常亮
 			break;
 		}
-			
-		vTaskDelay(100 / portTICK_RATE_MS);
+		
+		if(wifi_get_ssid_passwd == ALINK_TRUE)
+			vTaskDelay(500 / portTICK_RATE_MS);//等待APP发送SSID时，LED快闪
+		else
+			vTaskDelay(100 / portTICK_RATE_MS);//获取到SSID, PASSWD时，LED慢闪
 	}
 	vTaskDelete(NULL);
 }
@@ -399,7 +413,7 @@ void ICACHE_FLASH_ATTR user_app(void)
 
 #ifdef ENABLE_GPIO_KEY   // demo for smartplug class products
 	init_key();
-	//	wifi_set_event_handler_cb(wifi_event_hand_function);
+	wifi_set_event_handler_cb(wifi_event_hand_function);
 #endif	
 	wifi_set_opmode(STATION_MODE);
 	//os_printf("##[%s][%s|%d]Malloc %u.Available memory:%d.\n", __FILE__, __FUNCTION__, __LINE__, \

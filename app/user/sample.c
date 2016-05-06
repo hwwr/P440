@@ -72,8 +72,6 @@ u8 cloud_connect_status = 0x02;
 
 char device_status_change = 1;
 
-int sample_running = ALINK_TRUE;
-
 /* 根据不同系统打印剩余内存,用于平台调试 */
 int ICACHE_FLASH_ATTR print_mem_callback(void *a, void *b)
 {
@@ -275,10 +273,8 @@ static int ICACHE_FLASH_ATTR alink_device_post_data(alink_down_cmd_ptr down_cmd)
 			buffer_size, system_get_free_heap_size());
 
 		buffer = (char *)malloc(buffer_size);
-		if (buffer == NULL) {
-			wsf_deb("##[%s][%s|%d]Malloc error!!\n", __FILE__, __FUNCTION__, __LINE__);
+		if (buffer == NULL)
 			return -1;
-		}
 
 		memset(buffer, 0, buffer_size);
 
@@ -287,7 +283,7 @@ static int ICACHE_FLASH_ATTR alink_device_post_data(alink_down_cmd_ptr down_cmd)
 			virtual_device.Ventilation_Speed, virtual_device.TimeMeter_PowerOn,
 			virtual_device.LifeTime_Filter,virtual_device.ErrorCode, virtual_device.OnOff_AirQuality);
 
-		printf("%s\n", buffer);
+		printf("%s\n", buffer);//////////////////////////////
 
 		up_cmd.param = buffer;
 		if (down_cmd != NULL) {
@@ -510,8 +506,10 @@ int ICACHE_FLASH_ATTR alink_demo()
 
 	memset(&main_dev, 0, sizeof(main_dev));
 	alink_fill_deviceinfo(&main_dev);	// 必须根据PRD表格更新设备信息
+
 	//alink_set_loglevel(ALINK_LL_DEBUG | ALINK_LL_INFO | ALINK_LL_WARN | ALINK_LL_ERROR);
 	alink_set_loglevel(ALINK_LL_ERROR);
+
 	//alink_enable_sandbox_mode();                                      // 线上环境需要注解此函数
 	main_dev.sys_callback[ALINK_FUNC_SERVER_STATUS] = alink_handler_systemstates_callback;
 	alink_set_callback(ALINK_FUNC_AVAILABLE_MEMORY, print_mem_callback);
@@ -566,7 +564,7 @@ int ICACHE_FLASH_ATTR alink_demo()
 
 
 	/* 设备主动上报数据 */
-	while (sample_running) {
+	while (ALINK_TRUE) {
 
 		//os_printf("%s %d \n",__FUNCTION__,__LINE__);
 #ifdef PASS_THROUGH

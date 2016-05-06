@@ -101,11 +101,16 @@ extern  int need_factory_reset ;
 #define FRAME_CUS_ERRECHO_TYPE	0xFF//错误应答消息类型
 
 
+#define FRAME_CMD_STATUS_QUERY		0x01//模块状态查询
+#define FRAME_CMD_RESTART			0x02//模块重启
+#define FRAME_CMD_RESTORE			0x03//恢复出厂设置
+#define FRAME_CMD_SMARTCONFIG		0x04//进入smartconfig
+
 
 //用户协议相关,根据不同设备协议修改
 #define FRAME_DOWN_DATA_LEN				0x10//定义48下发消息总长
 #define	FRAME_ERROR_ECHO_DATA_LEN		0x07//定义错误应答消息总长
-#define	FRAME_STATUS_ECHO_DATA_LEN		0x0A//定义模块查询消息总长
+#define	FRAME_STATUS_ECHO_DATA_LEN		0x0B//定义模块查询消息总长
 //命令
 #define CUS_CMD_POST					0x00
 #define CUS_CMD_POWER_ONOFF				0x01
@@ -153,6 +158,7 @@ extern P440_DEV virtual_device;
 
 extern u8 cloud_connect_status;
 
+ 
 typedef struct
 {
 	uint8_t head;
@@ -162,7 +168,7 @@ typedef struct
 	uint8_t data[FRAME_DOWN_DATA_LEN-5];
 	uint8_t crc;
 
-}frame_t;
+}__attribute__((packed))frame_t;
 
 
 

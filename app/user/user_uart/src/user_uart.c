@@ -224,6 +224,8 @@ void ICACHE_FLASH_ATTR cus_uart_data_echo()
 	frame.crc += frame.id;
 
 	i = 0;
+	frame.data[i] = FRAME_CMD_STATUS_QUERY;  //work model, 01:STA,02:AP,03:STA+AP
+	frame.crc += frame.data[i++];
 	//add mode status
 	frame.data[i] = wifi_get_opmode();  //work model, 01:STA,02:AP,03:STA+AP
 	frame.crc += frame.data[i++];
@@ -246,7 +248,9 @@ void ICACHE_FLASH_ATTR cus_uart_data_echo()
 	frame.data[i++] = 0;//保留
 	frame.data[i] = frame.crc;
 
-	uart0_write_data((uint8_t *)&frame, frame.len);
+	uint8_t *p = (uint8_t *)&frame;
+
+	uart0_write_data(p, frame.len);
 
 	return;
 }
@@ -254,7 +258,7 @@ void ICACHE_FLASH_ATTR cus_uart_data_echo()
 /*
 	串口错误应答
 */
-void ICACHE_FLASH_ATTR cus_uart_error_echo(u8 error)
+void ICACHE_FLASH_ATTR cus_uart_error_echo(u8 error, u8 id)
 {
 	ESP_DBG(("cus_uart_error_echo"));
 
@@ -267,7 +271,7 @@ void ICACHE_FLASH_ATTR cus_uart_error_echo(u8 error)
 	frame.crc += frame.len;
 	frame.type = FRAME_CUS_ERRECHO_TYPE;
 	frame.crc += frame.type;
-	frame.id = _ID++;
+	frame.id = id;
 	frame.crc += frame.id;
 
 	frame.data[0] = error;
@@ -289,7 +293,7 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 
 	if (*dat_in != FRAME_HEADER || in_len > FRAME_DOWN_DATA_LEN)
 	{
-		cus_uart_error_echo(FRAME_ERROR_DATA_RANGE);
+		cus_uart_error_echo(FRAME_ERROR_DATA_RANGE, dat_in[FRAME_ID_OFFSET]);
 		return false;
 	}
 
@@ -303,7 +307,7 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 	printf("\ncrc:%d,recv_crc:%d\n", crc, dat_in[in_len - 1]);
 	/*
 	if (crc != dat_in[in_len - 1]){
-		cus_uart_error_echo(FRAME_ERROR_CRC);
+		cus_uart_error_echo(FRAME_ERROR_CRC,dat_in[FRAME_ID_OFFSET]);
 		return false;
 	}
 	*/
@@ -349,6 +353,9 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 
 			//other params
 			
+			if (FRAME_CUS_POST_TYPE == frame_type)
+				uart0_write_data(dat_in, in_len);//主动上报消息 模块反馈响应
+
 		}
 		else {
 			if (FRAME_CUS_DOWN_TYPE == frame_type) {
@@ -360,7 +367,7 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 			}
 			else {
 				ESP_DBG(("command unsupport"));
-				cus_uart_error_echo(FRAME_ERROR_UNCMD);
+				cus_uart_error_echo(FRAME_ERROR_UNCMD, dat_in[FRAME_ID_OFFSET]);
 				return false;
 			}
 
@@ -370,23 +377,38 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 	{
 		switch (*cus_data)
 		{
-		case 0x01://mode status query
+		case FRAME_CMD_STATUS_QUERY://mode status query
 
 			cus_uart_data_echo();
 
 			break;
 
-		case 0x02://restart
+		case FRAME_CMD_RESTART://restart
+
+			uart0_write_data(dat_in, in_len);//反馈响应
+			///
 
 
 			break;
 
-		case 0x03://reset
+		case FRAME_CMD_RESTORE://restore
 
+			uart0_write_data(dat_in, in_len);//反馈响应
+
+			need_factory_reset = 1;
+
+			break;
+		case FRAME_CMD_SMARTCONFIG://smartconfig
+
+			uart0_write_data(dat_in, in_len);//反馈响应
 
 			break;
 
-		default:break;
+		default:
+			
+			cus_uart_error_echo(FRAME_ERROR_FAIL, dat_in[FRAME_ID_OFFSET]);
+			
+			break;
 
 		}
 
@@ -399,7 +421,7 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 	else {
 
 		ESP_DBG(("frame type unsupport"));
-		cus_uart_error_echo(FRAME_ERROR_FAIL);
+		cus_uart_error_echo(FRAME_ERROR_FAIL,dat_in[FRAME_ID_OFFSET]);
 		return false;
 	}
 
