@@ -280,9 +280,14 @@ void UART_SetLineInverse(UART_Port uart_no, UART_LineLevelInverse inverse_mask) 
 void uart_init_new(void);
 
 /**
-  * @}
+  * @brief 
   */
 
+void uart0_tx_buffer(uint8 *buf, uint16 len);
+
+
+void uart1_tx_buffer(uint8 *buf, uint16 len);
+  
 /**
   * @}
   */

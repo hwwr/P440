@@ -79,6 +79,9 @@
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/espressif/smartconfig.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/espressif/spi_flash.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/espressif/pwm.h \
- ../include/user_config.h ../user/user_uart/include/user_uart.h \
+ ../include/user_config.h \
+ ../user/user_light/include/../../circleQueue/include/circleQueue.h \
+ ../user/user_light/include/../../circleQueue/include/../../../include/user_config.h \
+ ../user/user_uart/include/user_uart.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/freertos/queue.h \
  ../user/user_uart/include/../../../include/user_config.h

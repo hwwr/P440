@@ -146,6 +146,7 @@ extern void dumpFwInfo();
 extern void alink_ota_main_thread(FwFileInfo_t * pFwFileInfo);
 extern void alink_ota_init();
 
+
 #define pthread_mutex_init(a, b)sys_mutex_new(a)
 
 void ota_test()
@@ -413,7 +414,7 @@ void ICACHE_FLASH_ATTR user_app(void)
 
 #ifdef ENABLE_GPIO_KEY   // demo for smartplug class products
 	init_key();
-	wifi_set_event_handler_cb(wifi_event_hand_function);
+	//wifi_set_event_handler_cb(wifi_event_hand_function);
 #endif	
 	wifi_set_opmode(STATION_MODE);
 	//os_printf("##[%s][%s|%d]Malloc %u.Available memory:%d.\n", __FILE__, __FUNCTION__, __LINE__, \

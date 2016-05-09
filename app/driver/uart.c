@@ -87,6 +87,27 @@ uart0_write_char(char c)
 	}
 }
 
+void uart0_tx_buffer(uint8 *buf, uint16 len)
+{
+	uint16 i;
+
+	for (i = 0; i < len; i++)
+	{
+		uart_tx_one_char(UART0, buf[i]);
+	}
+}
+
+
+void uart1_tx_buffer(uint8 *buf, uint16 len)
+{
+	uint16 i;
+
+	for (i = 0; i < len; i++) {
+		uart1_tx_one_char(UART1, buf[i]);
+	}
+}
+
+
 LOCAL void
 uart_rx_intr_handler_ssc(void)
 {

@@ -24,6 +24,7 @@
 
 #ifndef __USER_CONFIG_H__
 #define __USER_CONFIG_H__
+
 #define RESTORE_KEEP_TIMER 0
 
 #define USE_OPTIMIZE_PRINTF
@@ -41,7 +42,6 @@ extern  int need_factory_reset ;
 
 
 //#define PASS_THROUGH 
-
 
 #ifdef PASS_THROUGH
 
@@ -170,7 +170,7 @@ typedef struct
 
 }__attribute__((packed))frame_t;
 
-
+#include "../../circleQueue/include/circleQueue.h"
 
 #endif
 

@@ -48,6 +48,8 @@ void debug_print_hex_data(char*buf, int len)
 	return;
 }
 
+
+
 int uart0_write_data(u8 *data, int len)
 {
 	int i = 0;
@@ -122,7 +124,8 @@ void ICACHE_FLASH_ATTR cus_wifi_data_handler(u8 cmd, int value)
 	frame.crc += frame.data[0];
 	frame.crc += value;
 
-	uart0_write_data((uint8_t *)&frame, frame.len);
+	//uart0_tx_buffer((uint8_t *)&frame, frame.len);
+	Enqueue(&frame);
 
 	return;
 }
@@ -190,8 +193,8 @@ void ICACHE_FLASH_ATTR cus_wifi_handler_alinkdata2mcu(u8 dat_index, int dat_valu
 	frame.crc += frame.data[0];
 	frame.crc += dat_value;
 
-	uart0_write_data((uint8_t *)&frame, frame.len);
-
+	//uart0_tx_buffer((uint8_t *)&frame, frame.len);
+	Enqueue(&frame);
 
 	return;
 }
@@ -250,7 +253,8 @@ void ICACHE_FLASH_ATTR cus_uart_data_echo()
 
 	uint8_t *p = (uint8_t *)&frame;
 
-	uart0_write_data(p, frame.len);
+	//uart0_tx_buffer(p, frame.len);
+	Enqueue(&frame);
 
 	return;
 }
@@ -278,7 +282,8 @@ void ICACHE_FLASH_ATTR cus_uart_error_echo(u8 error, u8 id)
 	frame.crc += error;
 	frame.data[1] = 0;//保留
 
-	uart0_write_data((uint8_t *)&frame, frame.len);
+	//uart0_tx_buffer((uint8_t *)&frame, frame.len);
+	Enqueue(&frame);
 
 	return;
 }
@@ -353,9 +358,11 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 
 			//other params
 			
-			if (FRAME_CUS_POST_TYPE == frame_type)
-				uart0_write_data(dat_in, in_len);//主动上报消息 模块反馈响应
-
+			if (FRAME_CUS_POST_TYPE == frame_type) {
+				//uart0_tx_buffer(dat_in, in_len);//主动上报消息 模块反馈响应
+				Enqueue((frame_t *)dat_in);
+			}
+			
 		}
 		else {
 			if (FRAME_CUS_DOWN_TYPE == frame_type) {
@@ -385,7 +392,8 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 
 		case FRAME_CMD_RESTART://restart
 
-			uart0_write_data(dat_in, in_len);//反馈响应
+			//uart0_tx_buffer(dat_in, in_len);//反馈响应
+			Enqueue((frame_t *)dat_in);
 			///
 
 
@@ -393,14 +401,16 @@ static u8 ICACHE_FLASH_ATTR cus_uart_data_handle(char *dat_in, int in_len, char 
 
 		case FRAME_CMD_RESTORE://restore
 
-			uart0_write_data(dat_in, in_len);//反馈响应
+			//uart0_tx_buffer(dat_in, in_len);//反馈响应
+			Enqueue((frame_t *)dat_in);
 
 			need_factory_reset = 1;
 
 			break;
 		case FRAME_CMD_SMARTCONFIG://smartconfig
 
-			uart0_write_data(dat_in, in_len);//反馈响应
+			//uart0_tx_buffer(dat_in, in_len);//反馈响应
+			Enqueue((frame_t *)dat_in);
 
 			break;
 
@@ -432,11 +442,23 @@ void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters)
 {
 	CusUartIntrPtr uartptrData;
 	u32 sys_time_value = system_get_time();
-	//char uart_beat_data[] = { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38 };  // test uart beat data "12345678"
 
 	while (1)
 	{
-		if (xQueueReceive(xQueueCusUart, (void *)&uartptrData, (portTickType)500/*portMAX_DELAY*/)) // wait about 5sec 
+		
+		if (EmptyQueue() == false && (system_get_time() - sys_time_value) >= 100) {
+
+			ESP_DBG(("***heap_size %d\n", system_get_free_heap_size()));
+
+			frame_t frame;
+
+			if (Dequeue(&frame)) {
+				uart0_tx_buffer((uint8_t *)&frame, frame.len);
+			}
+			sys_time_value = system_get_time();
+		}
+		
+		if (xQueueReceive(xQueueCusUart, (void *)&uartptrData, (portTickType)20/*portMAX_DELAY*/)) // wait about 20msec 
 		{
 			ESP_DBG(("data uart recv.."));
 			debug_print_hex_data(uartptrData.rx_buf, uartptrData.rx_len);
@@ -445,7 +467,7 @@ void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters)
 				cus_uart_data_handle(uartptrData.rx_buf, uartptrData.rx_len, NULL);
 			}
 		}
-
+		/*
 		if ((system_get_time() - sys_time_value) >= (60 * 1000 * 1000))  //about 1min, send data to uart0, demo beat data
 		{
 			ESP_DBG(("uart beat data***heap_size %d\n", system_get_free_heap_size()));
@@ -454,6 +476,8 @@ void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters)
 			
 			sys_time_value = system_get_time();
 		}
+		*/
+		
 	}
 
 	vTaskDelete(NULL);
@@ -465,7 +489,11 @@ void ICACHE_FLASH_ATTR user_uart_task(void *pvParameters)
 void ICACHE_FLASH_ATTR user_uart_dev_start(void)
 {
 	uart_init_new();   // cfg uart0 connection device MCU, cfg uart1 TX debug output
+	
+	createQueue(5); //串口发送缓冲队列长度
+	
 	xQueueCusUart = xQueueCreate((unsigned portBASE_TYPE)CUS_UART0_QUEUE_LENGTH, sizeof(CusUartIntrPtr));
+	
 	xTaskCreate(user_uart_task, (uint8 const *)"uart", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
 
 	return;

@@ -25,8 +25,9 @@ SUBDIRS=    \
 	user    \
 	driver  \
 	user/user_light/src \
+	user/circleQueue/src \
 	user/user_uart/src
-
+	
 endif # } PDIR
 
 LDDIR = $(SDK_PATH)/ld
@@ -51,7 +52,9 @@ COMPONENTS_eagle.app.v6 = \
 	user/libuser.a    \
 	driver/libdriver.a \
 	user/user_light/src/libuser_light.a \
+	user/circleQueue/src/libcircleQueue.a \
 	user/user_uart/src/libuser_uart.a
+	
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \
@@ -131,7 +134,7 @@ DDEFINES +=				\
 # Required for each makefile to inherit from the parent
 #
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include -I $(PDIR)user/user_light/include -I $(PDIR)user/user_uart/include
+INCLUDES := $(INCLUDES) -I $(PDIR)include -I $(PDIR)user/user_light/include -I $(PDIR)user/circleQueue/include -I $(PDIR)user/user_uart/include 
 sinclude $(SDK_PATH)/Makefile
 
 .PHONY: FORCE

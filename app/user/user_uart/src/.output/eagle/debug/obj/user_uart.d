@@ -78,4 +78,7 @@
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/espressif/pwm.h \
  ../include/user_uart.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/freertos/queue.h \
- ../include/../../../include/user_config.h ../../../include/driver/uart.h
+ ../include/../../../include/user_config.h \
+ ../../circleQueue/include/circleQueue.h \
+ ../../circleQueue/include/../../../include/user_config.h \
+ ../../../include/driver/uart.h

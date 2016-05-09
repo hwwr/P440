@@ -82,8 +82,10 @@
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/lwip/lwip/dns.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/lwip/lwip/err.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/lwip/lwip/netdb.h \
- ../include/alink_export.h ../include/user_config.h ../include/esp_ota.h \
- ../user/user_uart/include/user_uart.h \
+ ../include/alink_export.h ../include/user_config.h \
+ ../user/user_light/include/../../circleQueue/include/circleQueue.h \
+ ../user/user_light/include/../../circleQueue/include/../../../include/user_config.h \
+ ../include/esp_ota.h ../user/user_uart/include/user_uart.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/freertos/queue.h \
  ../user/user_uart/include/../../../include/user_config.h \
  /home/hekr/P440/app/../ESP8266_RTOS_SDK_ALINK/include/freertos/semphr.h \
