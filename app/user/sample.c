@@ -383,6 +383,9 @@ int ICACHE_FLASH_ATTR alink_handler_systemstates_callback(void *dev_mac, void *s
 	case ALINK_STATUS_LOGGED:
 		sprintf(uuid, "%s", alink_get_uuid(NULL));
 		wsf_deb("ALINK_STATUS_LOGGED, mac %s uuid %s\n", mac, uuid);
+
+		cloud_connect_status = 0x01;//已经成功登陆
+
 		break;
 	default:
 		break;
@@ -459,7 +462,6 @@ static int ICACHE_FLASH_ATTR read_config(unsigned char *buffer, unsigned int len
 {
 
 	int res = 0;
-	int pos = 0;
 	res = spi_flash_read(LFILE_START_ADDR, (uint32 *)buffer, len);
 	if (res != SPI_FLASH_RESULT_OK) {
 		wsf_err("read flash data error\n");
@@ -537,13 +539,15 @@ int ICACHE_FLASH_ATTR alink_demo()
 	
 	if (ALINK_OK == alink_wait_connect(NULL, ALINK_WAIT_FOREVER))	//wait main device login, -1 means wait forever
 	{
-		cloud_connect_status = 0x01;
+		//cloud_connect_status = 0x01;
+
 		//char send_buf_alink_connOK[] = { 0x31, 0x31, 0x31, 0x31 }; // demo data to tell uart mcu dev, alink conn success
 		//uart0_write_data(send_buf_alink_connOK, sizeof(send_buf_alink_connOK));
 	}
 	else
 	{
-		cloud_connect_status = 0x02;
+		//cloud_connect_status = 0x02;
+
 		//char send_buf_alink_connFailed[] = { 0x32, 0x32, 0x32, 0x32 }; // demo data to tell uart mcu dev, alink conn success
 		//uart0_write_data(send_buf_alink_connFailed, sizeof(send_buf_alink_connFailed));
 	}

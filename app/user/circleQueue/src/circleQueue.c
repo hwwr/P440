@@ -13,24 +13,23 @@ void createQueue(int maxsize)
 	Q->pBase=(frame_t *)malloc(sizeof(frame_t)*maxsize);
 	if(NULL==Q->pBase)
 	{
-		printf("Memory allocation failure");
-		exit(-1);        //退出程序
+		return; 
 	}
-	Q->front=0;         //初始化参数
-	Q->rear=0;
-	Q->maxsize=maxsize;
+	Q->front = 0; 
+	Q->rear = 0;
+	Q->maxsize = maxsize;
 }
 
 bool FullQueue()
 {
-	if(Q->front==(Q->rear+1)%Q->maxsize)    //判断循环链表是否满，留一个预留空间不用
+	if(Q->front==(Q->rear+1)%Q->maxsize)
 		return true;
 	else
 		return false;
 }
 bool EmptyQueue()
 {
-	if(Q->front==Q->rear)    //判断是否为空
+	if(Q->front==Q->rear) 
 		return true;
 	else
 		return false;
@@ -42,7 +41,6 @@ bool Enqueue(frame_t *val)
 		return false;
 	else
 	{
-	//	Q->pBase[Q->rear]=val;
 		memcpy(&Q->pBase[Q->rear],val,sizeof(frame_t));
 		
 		Q->rear=(Q->rear+1)%Q->maxsize;
